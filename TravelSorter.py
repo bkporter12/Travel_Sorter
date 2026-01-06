@@ -21,19 +21,19 @@ st.info("Tip: For 'Cities', you can enter multiple locations separated by a comm
 
 default_events = [
     {
-        "Event Name": "Sacramento Event", 
-        "Cities": "Sacramento", 
+        "Event Name": "NorCal", 
+        "Cities": "Sacramento, Oakland", 
         "Start Date": date(2026, 3, 18), 
         "End Date": date(2026, 3, 24)
     },
     {
-        "Event Name": "Phoenix Gathering", 
+        "Event Name": "Arizona", 
         "Cities": "Phoenix, Mesa", 
         "Start Date": date(2026, 4, 15), 
         "End Date": date(2026, 4, 21)
     },
     {
-        "Event Name": "Ontario Convention", 
+        "Event Name": "SoCal", 
         "Cities": "Ontario", 
         "Start Date": date(2026, 4, 29), 
         "End Date": date(2026, 5, 5)
@@ -191,3 +191,4 @@ if uploaded_file is not None and not events_df.empty:
 
 elif uploaded_file is None:
     st.info("Awaiting file upload...")
+
