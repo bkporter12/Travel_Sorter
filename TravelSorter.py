@@ -19,30 +19,27 @@ This tool groups individual traveler data by event.
 st.header("1. Define Events")
 st.info("Tip: For 'Cities', you can enter multiple locations separated by a comma (e.g. 'Dallas, Ft. Worth').")
 
-# Default data with Date Ranges
 default_events = [
     {
-        "Event Name": "NorCal", 
-        "Cities": "Sacramento, Oakland", 
+        "Event Name": "Sacramento Event", 
+        "Cities": "Sacramento", 
         "Start Date": date(2026, 3, 18), 
         "End Date": date(2026, 3, 24)
     },
     {
-        "Event Name": "Arizona", 
+        "Event Name": "Phoenix Gathering", 
         "Cities": "Phoenix, Mesa", 
         "Start Date": date(2026, 4, 15), 
         "End Date": date(2026, 4, 21)
     },
     {
-        "Event Name": "SoCal", 
-        "Cities": "Ontario, Los Angeles", 
+        "Event Name": "Ontario Convention", 
+        "Cities": "Ontario", 
         "Start Date": date(2026, 4, 29), 
         "End Date": date(2026, 5, 5)
     }
 ]
 
-# Create an editable table with Date Pickers
-# We force the column configuration to ensure dates appear as date pickers
 column_config = {
     "Start Date": st.column_config.DateColumn("Start Date", format="YYYY-MM-DD"),
     "End Date": st.column_config.DateColumn("End Date", format="YYYY-MM-DD"),
@@ -72,18 +69,6 @@ def format_travel_time(date_val, time_val):
     except:
         return f"{date_val} {time_val}"
 
-def is_date_in_range(travel_date, start_date, end_date):
-    """
-    Checks if the travel date falls within the event window.
-    """
-    try:
-        # Convert travel_date to a python date object
-        t_date = pd.to_datetime(travel_date).date()
-        # Compare
-        return start_date <= t_date <= end_date
-    except:
-        return False
-
 # ==========================================
 # 2. FILE UPLOAD SECTION
 # ==========================================
@@ -98,7 +83,7 @@ if uploaded_file is not None and not events_df.empty:
         header_row_index = 0
         df = None
 
-        # --- LOAD DATA (CSV or Excel) ---
+        # --- LOAD DATA ---
         if uploaded_file.name.endswith('.csv'):
             stringio = io.StringIO(uploaded_file.getvalue().decode("utf-8"))
             lines = stringio.readlines()
@@ -127,8 +112,6 @@ if uploaded_file is not None and not events_df.empty:
 
         # Cleanup
         df.columns = df.columns.str.strip()
-        
-        # Ensure date columns are proper datetime objects for filtering
         df['Arrival Date'] = pd.to_datetime(df['Arrival Date'])
         df['Departure Date'] = pd.to_datetime(df['Departure Date'])
 
@@ -139,24 +122,20 @@ if uploaded_file is not None and not events_df.empty:
         for index, event in events_df.iterrows():
             event_name = event['Event Name']
             
-            # 1. Parse Cities (handle comma separation)
+            # Parse Cities and Dates
             raw_cities = str(event['Cities'])
             target_cities = [c.strip() for c in raw_cities.split(',')]
-            
-            # 2. Parse Dates
             start_date = event['Start Date']
             end_date = event['End Date']
 
-            # --- FILTER ARRIVALS ---
-            # Logic: Destination matches City List AND Arrival Date is in Range
+            # Filter Arrivals (Destination matches City List AND Date in Range)
             arrivals = df[
                 (df['Arrival City'].isin(target_cities)) & 
                 (df['Arrival Date'].dt.date >= start_date) & 
                 (df['Arrival Date'].dt.date <= end_date)
             ].copy()
 
-            # --- FILTER DEPARTURES ---
-            # Logic: Origin matches City List AND Departure Date is in Range
+            # Filter Departures (Origin matches City List AND Date in Range)
             departures = df[
                 (df['Departure City Name'].isin(target_cities)) & 
                 (df['Departure Date'].dt.date >= start_date) & 
@@ -170,31 +149,35 @@ if uploaded_file is not None and not events_df.empty:
 
             for _, row in arrivals.iterrows():
                 name = row['Traveler Name']
-                home_city = row['Departure City Name'] # Origin of the arrival flight
+                home_city = row['Departure City Name'] 
                 
-                # Format Arrival
+                # Arrival Details
                 arr_formatted = format_travel_time(row['Arrival Date'], row['Arrival Time'])
                 arr_flight = f"{row['Airline Code']} {row['Flight Number']}"
+                arr_airport = row.get('Arrive Airport', '-') # The airport they land AT
                 
-                # Find matching Return Info
-                # We look for the same person in the filtered 'departures' list for this event
+                # Departure Details
                 person_dep = departures[departures['Traveler Name'] == name]
                 
                 if not person_dep.empty:
                     dep_row = person_dep.iloc[0]
                     dep_formatted = format_travel_time(dep_row['Departure Date'], dep_row['Departure Time'])
                     dep_flight = f"{dep_row['Airline Code']} {dep_row['Flight Number']}"
+                    dep_airport = dep_row.get('Depart Airport', '-') # The airport they fly FROM
                 else:
                     dep_formatted = "No Return Flight"
                     dep_flight = "-"
+                    dep_airport = "-"
 
                 report_data.append({
                     "Name": name,
                     "Home City": home_city,
-                    "Arrival Time": arr_formatted,
-                    "Arrival Flight": arr_flight,
-                    "Departure Time": dep_formatted,
-                    "Departure Flight": dep_flight
+                    "Arr Time": arr_formatted,
+                    "Arr Flight": arr_flight,
+                    "Arr Airport": arr_airport,
+                    "Dep Time": dep_formatted,
+                    "Dep Flight": dep_flight,
+                    "Dep Airport": dep_airport
                 })
             
             st.subheader(f"{event_name}")
